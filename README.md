@@ -30,6 +30,7 @@ python3 exiftron.py -b downloaded_images --dashboard
 ```
 ![image](https://github.com/user-attachments/assets/dce6e062-b5bf-4696-9e8d-da44e6cc6feb)
 ![image](https://github.com/user-attachments/assets/635a3559-946d-4070-8f2a-7dcbe2ad2412)
+![image](https://github.com/user-attachments/assets/b4214f7f-0131-40fb-bb72-0694bf3752f3)
 
 This version integrates all features requested: vulnerability and PII detection, payload injection, PoC generation, blind attack ideas, and a dashboard for interactive review.
 For production use of the dashboard, consider deploying with a proper WSGI server rather than Flask’s development server.
