@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # EXIFTron Multi-Tool Bash Wrapper
-# Author: @BugBountyBot
+# Author: @Kdairatchii
 
 # Configuration
-TOOL_NAME="EXIFTron - MultiTool"
+TOOL_NAME="EXIFTron - MultiTool By Kdairatchi "
 EXIF_SCRIPT="exiftron2.py"  # Ensure this is in the same directory
 BANNER="
 ███████╗██╗██╗   ██╗████████╗████████╗██████╗ ██████╗ ███╗   ██╗
