@@ -141,7 +141,7 @@ generate_report() {
 update_tool() {
     echo -e "🔄 Updating EXIFTron..."
     git pull origin main
-    chmod +x exif_multitool.sh
+    chmod +x main.sh
     echo -e "✅ Update Complete!"
     read -p "Press Enter to continue..."
     main_menu
