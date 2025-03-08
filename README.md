@@ -3,7 +3,11 @@
 1. Generate a test image with preset payloads (PoC)
 
 ```
-python3 exiftron.py --test
+#python3 exiftron.py --test 
+```
+use instead
+```
+python3 test.py
 ```
 2. Scan a single image (CLI report)
 
