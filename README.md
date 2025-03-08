@@ -8,21 +8,21 @@ python3 exiftron.py --test
 2. Scan a single image (CLI report)
 
 ```
-python3 exiftron_bounty.py -i test_image.jpg --report -g
+python3 exiftron.py -i test_image.jpg --report -g
 ```
 3. Batch scan a folder of images
 
 ```
-python3 exiftron_bounty.py -b downloaded_images --report -g
+python3 exiftron.py -b downloaded_images --report -g
 ```
 4. Inject a payload (e.g. RCE) into a single image
 
 ```
-python3 exiftron_bounty.py -i test_image.jpg -p RCE --field Comment --report
+python3 exiftron.py -i test_image.jpg -p RCE --field Comment --report
 ```
 5. Launch the web dashboard to view results
 ```
-python3 exiftron_bounty.py -b downloaded_images --dashboard
+python3 exiftron.py -b downloaded_images --dashboard
 ```
 
 This version integrates all features requested: vulnerability and PII detection, payload injection, PoC generation, blind attack ideas, and a dashboard for interactive review.
