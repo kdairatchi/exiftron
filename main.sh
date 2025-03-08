@@ -7,7 +7,7 @@ TOOL_NAME="Ultimate EXIFTron"
 EXIF_SCRIPT="exiftron.py"  # Path to your Python EXIFTron script
 RESULTS_DB="${HOME}/.exiftron_results.db"
 TEMP_DIR=$(mktemp -d)
-GIT_REPO_URL="https://github.com/yourusername/exiftron.git"  # Update with your repository URL
+GIT_REPO_URL="https://github.com/kdairatchi/exiftron.git"  # Update with your repository URL
 
 # Color Codes
 RED='\033[0;31m'
